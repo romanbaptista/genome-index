@@ -55,7 +55,7 @@ The preflight layer executes entirely on the login node and:
 - Ensures the FASTA has an acceptable extension (`.fa`, `.fasta`, `.fna`)
 - Confirms module scripts exist, contain data, and are executable
 - Loads cluster modules for bwa and `samtools` explicitly
-- Validates that `bwa mem` and `samtools` faidx functionality is available
+- Validates that `bwa mem` and `samtools faidx` functionality is available
 
 All validation is authoritative and occurs before any SLURM jobs are submitted.
 
