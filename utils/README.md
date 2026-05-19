@@ -1,5 +1,5 @@
 # `utils`
-This directory contains shared utility functions used by the `ref-index` pipeline.
+This directory contains shared utility functions used by the `genome-index` pipeline.
 
 The scripts in `utils/` provide reusable, strictly validated helper functions that support:
 - Preflight validation

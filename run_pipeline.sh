@@ -4,7 +4,7 @@ set -euo pipefail
 ######################### SETUP ##########################
 
 # Define pipeline name
-PIPELINE_NAME="ref-index"
+PIPELINE_NAME="genome-index"
 # Define script name
 SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}" .sh)
 

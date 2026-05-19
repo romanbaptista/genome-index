@@ -1,12 +1,12 @@
 # `modules`
 
-This directory contains the execution layer for the `ref-index` pipeline.
+This directory contains the execution layer for the `genome-index` pipeline.
 
 Each module is responsible for a clearly defined execution role and operates under a strict, preflight‑validated contract designed for HPC environments, where all compute‑intensive work is delegated to the scheduler.
 
 Modules are coordinated by `modules/pipeline.sh`, which is invoked by `run_pipeline.sh` only after all preflight checks have completed successfully.
 
-Unlike sample-based pipelines, `ref-index` operates on a single global input (a reference FASTA) and performs a single atomic operation.
+Unlike sample-based pipelines, `genome-index` operates on a single global input (a reference FASTA) and performs a single atomic operation.
 
 # Design Contract
 All modules in this directory adhere to the following principles:
@@ -26,7 +26,7 @@ Modules do not perform input validation, tool installation, or configuration che
 All such guarantees are established by the preflight layer and enforced via guarded environment variables.
 
 # Execution Model
-`ref-index` is a scheduler‑backed pipeline:
+`genome-index` is a scheduler‑backed pipeline:
 - Orchestration logic runs on the login node
 - Execution modules run as SLURM jobs on compute nodes
 - Execution behaviour is controlled via an explicit environment contract
@@ -44,7 +44,7 @@ All SLURM submissions occur only after successful preflight validation.
 
 # Module Overview
 ## `pipeline.sh`
-Internal orchestrator for the `ref-index` pipeline.
+Internal orchestrator for the `genome-index` pipeline.
 
 ### Role
 - `pipeline.sh` is responsible for submitting the reference indexing job to the SLURM scheduler.

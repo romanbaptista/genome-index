@@ -1,7 +1,7 @@
-# `ref-index`
+# `genome-index`
 
 # Overview
-This repository contains the `ref-index` pipeline — a modular, HPC‑compatible workflow for:
+This repository contains the `genome-index` pipeline — a modular, HPC‑compatible workflow for:
 > Deterministic preparation of reference genome FASTA files for downstream alignment pipelines via generation of required index files.
 
 The pipeline exists to ensure that reference indexing is:
@@ -17,12 +17,12 @@ The pipeline is designed specifically for HPC environments and supports:
 - A single atomic execution model ensuring reference integrity
 - Canonical pipeline structure defined via shared arrays and enforced contracts
 
-Unlike sample-driven pipelines, `ref-index` operates on a single reference genome and produces reusable, global artefacts.
+Unlike sample-driven pipelines, `genome-index` operates on a single reference genome and produces reusable, global artefacts.
 
 # Repository Structure
 
 ```text
-ref-index/
+genome-index/
 ├── README.md                               # Top-level overview (this file)
 ├── config.sh                               # User configuration (reference + resources)
 ├── run_pipeline.sh                         # Entry point (login-node orchestration)
@@ -142,7 +142,7 @@ For detailed documentation on individual components, see:
 # Citation
 If you use this pipeline in published work, please cite:
 
-> Baptista, R. _ref-index: A contract-driven HPC pipeline for reference genome indexing_.
-> GitHub repository: https://github.com/romanbaptista/ref-index
+> Baptista, R. _genome-index: A contract-driven HPC pipeline for reference genome indexing_.
+> GitHub repository: https://github.com/romanbaptista/genome-index
 
 Optionally include the commit hash or release tag used for analysis.

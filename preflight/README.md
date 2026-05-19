@@ -1,6 +1,6 @@
 # `preflight`
 
-This directory contains the preflight validation layer for the `ref-index` pipeline.
+This directory contains the preflight validation layer for the `genome-index` pipeline.
 
 Preflight scripts are responsible for all validation and environment checks required to safely execute the pipeline on an HPC system before any SLURM jobs are submitted.
 
