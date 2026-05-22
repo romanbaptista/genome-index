@@ -38,10 +38,10 @@ echo "  SUBMITTING refindex.sh"
 
 REFINDEX=$(
     sbatch \
-    --parsable \
-    --cpus-per-task="${BWA_CPUS}" \
-    --output="${LOG_DIR}/refindex.%j.log" \
-    "${MODULES_DIR}/refindex.sh"
+        --parsable \
+        --cpus-per-task="${BWA_CPUS}" \
+        --output="${LOG_DIR}/refindex.%j.log" \
+        "${MODULES_DIR}/refindex.sh"
 ) || fail "  Failed to submit refindex.sh"
 
 echo "  refindex.sh SUBMITTED"

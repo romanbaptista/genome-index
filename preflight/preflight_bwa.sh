@@ -3,8 +3,8 @@ set -euo pipefail
 
 ######################### GUARDS ##########################
 
-: "${PIPELINE_DIR:?PIPELINE_DIR not set (check PATHS section in run_pipeline.sh)}"
 : "${UTILS_DIR:?UTILS_DIR not set (check PATHS section in run_pipeline.sh)}"
+: "${BWA_MODULE:?BWA_MODULE not set (check arrays.sh)}"
 
 ######################### SETUP ##########################
 

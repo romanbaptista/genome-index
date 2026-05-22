@@ -3,8 +3,8 @@ set -euo pipefail
 
 ######################### GUARDS ##########################
 
-: "${PIPELINE_DIR:?PIPELINE_DIR not set (check PATHS section in run_pipeline.sh)}"
 : "${UTILS_DIR:?UTILS_DIR not set (check PATHS section in run_pipeline.sh)}"
+: "${SAMTOOLS_MODULE:?SAMTOOLS_MODULE not set (check arrays.sh)}"
 
 ######################### SETUP ##########################
 
@@ -31,5 +31,5 @@ module load "${SAMTOOLS_MODULE}" || fail "  Failed to load module: ${SAMTOOLS_MO
 echo "  Checking module functionality..."
 check_samtools || fail "  ${TOOLNAME} functionality not found: 'faidx'"
 
-echo "  Module loaded and funtionality confirmed: ${TOOLNAME}"
+echo "  Module loaded and functionality confirmed: ${TOOLNAME}"
 echo "  ${SCRIPT_NAME} COMPLETE"

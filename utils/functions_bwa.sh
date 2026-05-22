@@ -23,8 +23,15 @@ check_bwa() {
     # Check general command
     check_command bwa || return 1
 
-    # Check specific command
-    bwa 2>&1 | grep -q "mem" \
+    # # Check specific command
+    # bwa 2>&1 | grep -q "mem" \
+    #     || {
+    #         echo "  ERROR: bwa mem not available"
+    #         return 1
+    #     }
+
+    # Invoke command
+    bwa mem 2>&1 | grep -q "Usage" \
         || {
             echo "  ERROR: bwa mem not available"
             return 1

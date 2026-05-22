@@ -23,12 +23,19 @@ check_samtools() {
     # Check general command
     check_command samtools || return 1
 
-    # Check specific command
-    samtools 2>&1 | grep -q "faidx" \
+    # # Check specific command
+    # samtools 2>&1 | grep -q "faidx" \
+    #     || {
+    #         echo "  ERROR: samtools faidx not available"
+    #         return 1
+    #     }
+
+    # Invoke command
+    samtools faidx 2>&1 | grep -q "Usage" \
         || {
             echo "  ERROR: samtools faidx not available"
             return 1
         }
-
+        
     return 0
 }
