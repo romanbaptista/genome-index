@@ -29,9 +29,9 @@ echo
 echo "RUNNING ${SCRIPT_NAME} ..."
 echo "  Checking ${TOOLNAME} functionality..."
 
-module load "${BWA_MODULE}" || fail_message "  Failed to load module: ${BWA_MODULE}"
-tool_check_binary ${TOOLNAME} || fail_message "  Binary not found: ${TOOLNAME}"
-tool_check_subcommand ${TOOLNAME} mem || fail_message "  Subcommand not found: ${TOOLNAME} mem"
+module load "${BWA_MODULE}" || fail_message "Failed to load module: ${BWA_MODULE}"
+tool_check_binary ${TOOLNAME} || fail_message "Binary not found: ${TOOLNAME}"
+tool_check_subcommand ${TOOLNAME} mem || fail_message "Subcommand not found: ${TOOLNAME} mem"
 
 echo "  ${TOOLNAME} loaded and functionality confirmed"
 echo "${SCRIPT_NAME} COMPLETE"

@@ -29,9 +29,9 @@ echo
 echo "RUNNING ${SCRIPT_NAME} ..."
 echo "  Checking ${TOOLNAME} functionality..."
 
-module load "${SAMTOOLS_MODULE}" || fail_message "  Failed to load module: ${SAMTOOLS_MODULE}"
-tool_check_binary ${TOOLNAME} || fail_message "  Binary not found: ${TOOLNAME}"
-tool_check_subcommand ${TOOLNAME} faidx || fail_message "  Subcommand not found: ${TOOLNAME} faidx"
+module load "${SAMTOOLS_MODULE}" || fail_message "Failed to load module: ${SAMTOOLS_MODULE}"
+tool_check_binary ${TOOLNAME} || fail_message "Binary not found: ${TOOLNAME}"
+tool_check_subcommand ${TOOLNAME} faidx || fail_message "Subcommand not found: ${TOOLNAME} faidx"
 
 echo "  ${TOOLNAME} loaded and functionality confirmed"
 echo "${SCRIPT_NAME} COMPLETE"
