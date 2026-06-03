@@ -2,118 +2,158 @@
 
 # Overview
 This repository contains the `genome-index` pipeline — a modular, HPC‑compatible workflow for:
-> Deterministic preparation of reference genome FASTA files for downstream alignment pipelines via generation of required index files.
 
-The pipeline exists to ensure that reference indexing is:
-- Explicit (never implicit within alignment workflows)
-- Reproducible across HPC environments
-- Executed once per reference, not per dataset
-- Guaranteed via a strict preflight validation layer
+> Deterministically generating BWA and samtools index files for a reference genome FASTA using a fully contract‑driven, SLURM‑native execution model.
 
-The pipeline is designed specifically for HPC environments and supports:
-- Explicit execution contracts for deterministic behaviour across SLURM boundaries
-- Strict separation of configuration, validation, orchestration, and execution layers
-- Guaranteed presence and correctness of reference index files before downstream use
-- A single atomic execution model ensuring reference integrity
-- Canonical pipeline structure defined via shared arrays and enforced contracts
+The pipeline is designed for execution in HPC environments and provides:
+- Deterministic, single-pass reference indexing using `bwa` and `samtools`
+- Strict fail‑fast validation prior to any job submission
+- Explicit execution ABI for safe variable propagation across SLURM boundaries
+- Clean separation between validation, orchestration, and execution layers
+- Minimal, atomic execution model (one reference → one job)
+- Fully reproducible and portable behaviour across HPC systems
 
-Unlike sample-driven pipelines, `genome-index` operates on a single reference genome and produces reusable, global artefacts.
+Unlike sample-based pipelines, genome-index operates on a single reference genome and produces a fully indexed dataset required for downstream alignment workflows.
+
+Internally, the pipeline adheres to a strict contract-driven architecture, enforcing separation between:
+- configuration
+- declarative contract definition
+- validation
+- execution
+
+This guarantees reproducibility, portability, and fail‑fast behaviour across HPC environments.
 
 # Repository Structure
 
 ```text
 genome-index/
-├── README.md                               # Top-level overview (this file)
-├── config.sh                               # User configuration (reference + resources)
-├── run_pipeline.sh                         # Entry point (login-node orchestration)
-├── utils/                                  # Shared utilities and canonical definitions
-│   ├── arrays.sh                           # Source of truth for pipeline structure and ABI
-│   ├── functions_base.sh                   # General-purpose helper functions
-│   ├── functions_bwa.sh                    # bwa validation helpers
-│   └── functions_samtools.sh               # samtools validation helpers
-├── preflight/                              # Preflight validation layer
+├── README.md                     # Top-level overview (this file)
+├── config.sh                     # User configuration (reference + resources)
+├── genome-index.sh               # Entry point (logging + preflight + submission)
+│
+├── arrays/                       # Declarative pipeline contracts (ABI + ordering)
+│   ├── array_preflight.sh
+│   ├── array_pipeline.sh
+│   ├── array_variables.sh
+│   ├── array_binaries.sh
+│   └── array_exports.sh
+│
+├── utils/                        # Static variable definitions (no logic)
+│   ├── utils_paths.sh
+│   ├── utils_bwa.sh
+│   └── utils_samtools.sh
+│
+├── functions/                    # Atomic helper functions
+│   └── functions_base.sh
+│
+├── preflight/                    # Validation + environment setup
 │   ├── preflight.sh
-│   ├── preflight_input.sh
 │   ├── preflight_variables.sh
-│   ├── preflight_scripts.sh
-│   ├── preflight_commands.sh
+│   ├── preflight_input.sh
+│   ├── preflight_binaries.sh
+│   ├── preflight_exports.sh
+│   ├── preflight_pipeline.sh
 │   ├── preflight_bwa.sh
 │   └── preflight_samtools.sh
-└── modules/                                # Execution layer
-    ├── pipeline.sh                         # SLURM orchestrator
-    └── refindex.sh                         # Reference indexing module
+│
+├── pipeline/                     # Execution layer
+│   ├── pipeline.sh               # SLURM orchestrator
+│   └── refindex.sh               # Reference indexing module
+│
+└── logs/                         # Centralised logs (created at runtime)
 ```
 
 # Workflow
-At a high level, the pipeline proceeds as follows:
+At a high level, the pipeline executes in three phases:
 
-### Preflight validation
-The preflight layer executes entirely on the login node and:
-- Verifies all required framework-level commands are available
-- Confirms all required user configuration variables are set and non-empty
-- Validates that the reference FASTA exists and is non-empty
-- Ensures the FASTA has an acceptable extension (`.fa`, `.fasta`, `.fna`)
-- Confirms module scripts exist, contain data, and are executable
-- Loads cluster modules for bwa and `samtools` explicitly
-- Validates that `bwa mem` and `samtools faidx` functionality is available
+## Preflight validation
+The preflight layer performs strict fail-fast validation before any SLURM job is submitted:
+- Verifies all required system binaries are available
+- Confirms required configuration variables are defined and non-empty
+- Validates the reference FASTA:
+  - exists
+  - contains data
+  - has a valid extension (`.fa`, `.fasta`, `.fna`)
+- Ensures pipeline scripts exist and are executable
+- Loads and validates bwa and samtools via the HPC module system
+- Constructs the execution ABI (`EXPORT_ARRAY`)
+- Generates `SBATCH_EXPORTS` for SLURM environment propagation
 
-All validation is authoritative and occurs before any SLURM jobs are submitted.
+This guarantees that all execution invariants are satisfied before scheduling any compute work.
 
-### Pipeline orchestration
-- The pipeline is launched via run_pipeline.sh from the login node
-- A strict execution ABI is constructed via `EXPORT_ARRAY`
-- Only explicitly declared variables are propagated to SLURM jobs via `--export`
-- A single orchestrator job (`modules/pipeline.sh`) is submitted
-- The orchestrator dispatches a single atomic indexing job
+## Pipeline orchestration
+The entrypoint (`genome-index.sh`) submits a SLURM orchestration job (`pipeline.sh`), which:
+- Logs execution to a centralised log file
+- Consumes the immutable execution ABI (`SBATCH_EXPORTS`)
+- Submits the reference indexing module as a single SLURM job
+- Passes CPU allocation explicitly via `--cpus-per-task`
+- Captures the resulting job ID for traceability
 
-### Reference indexing execution
-The execution module (refindex.sh) runs under SLURM and:
-- Uses only explicitly exported variables and SLURM-provided resources
-- Builds a BWA index using `bwa index`
-- Builds a FASTA index using `samtools faidx`
-- Writes all index files alongside the reference FASTA
-- Produces no other outputs or side effects
+## Execution module
+- `refindex.sh`
+- Loads required HPC modules (`bwa`, `samtools`)
+- Uses SLURM-provided CPU resources (`SLURM_CPUS_PER_TASK`)
+- Runs:
 
-Execution modules assume all preflight guarantees are satisfied and perform no validation.
+```text
+bwa index → samtools faidx
+```
+
+- Generates index files alongside the reference FASTA
+- Performs no validation (assumes preflight guarantees)
+- Executes as a single atomic job
+
+# Execution Model
+The pipeline enforces strict execution boundaries:
+
+```text
+login node
+  → preflight (validation + ABI construction)
+    → SLURM job (pipeline.sh)
+      → SLURM job (refindex.sh)
+```
+
+### Key guarantees:
+- No implicit environment state crosses boundaries
+- All variables are passed explicitly via `SBATCH_EXPORTS`
+- Tool environments are reconstructed in SLURM jobs
+- Execution modules rely only on exported variables and SLURM context
+- Preflight guarantees eliminate the need for runtime validation
 
 # Configuration
 All user-defined parameters are specified in `config.sh`.
 
-Configuration variables
-| Variable   | Description |
-|------------|-------------|
-| `REF_FASTA`  | Absolute or relative path to the reference genome FASTA file to be indexed |
-| `BWA_CPUS`   | Number of CPU threads allocated to the indexing job |
-
-
-# Required Input
-The pipeline operates on a single reference FASTA file:
-
-```text
-/path/to/reference.fa
+At minimum:
+```bash
+REF_FASTA="/path/to/reference.fa"
+BWA_CPUS=4
 ```
 
-The file must:
-- Exist and be readable
-- Contain sequence data
-- Use an accepted FASTA extension (`.fa`, `.fasta`, `.fna`)
+# Configuration Variables
+
+| Variable   | Description |
+|----------|------------|
+| REF_FASTA | Path to reference genome FASTA file to be indexed |
+| BWA_CPUS | Number of CPU threads allocated to indexing |
 
 # Usage
-Navigate to the root of the repository and run:
+From the pipeline root directory:
 
 ```bash
-run_pipeline.sh
+bash genome-index.sh
 ```
 
 This will:
-- Perform all preflight validation checks
-- Load required cluster modules
-- Submit the indexing workflow via SLURM
+- Execute full preflight validation
+- Validate and load required tool modules
+- Construct the execution ABI
+- Submit SLURM job(s)
+- Generate reference index files
 
 # Outputs
-The pipeline does not produce outputs in a dedicated directory.
+No dedicated output directory is created.
 
-Instead, it generates index files directly alongside the reference FASTA:
+Instead, index files are generated alongside the reference FASTA:
 
 ```text
 reference.fa
@@ -125,24 +165,39 @@ reference.fa.sa
 reference.fa.fai
 ```
 
-These files collectively define a fully indexed reference suitable for alignment workflows.
+These files together represent a fully indexed reference, ready for use in alignment pipelines.
 
-# Design Notes
-- Index files are treated as part of the reference object, not pipeline outputs
-- Indexing is performed exactly once per reference
-- Downstream pipelines (e.g. alignment) must assume indexes exist and must not create them
-- Execution is atomic — the reference transitions from “unindexed” to “fully indexed”
+# Architecture Summary
+
+| Layer | Responsibility |
+|------|----------------|
+| `config.sh` | User-defined configuration |
+| `arrays/` | Declarative pipeline contract and ABI |
+| `utils/` | Static variable definitions (tool + paths) |
+| `functions/` | Atomic helper functions |
+| `preflight/` | Validation and environment setup |
+| `pipeline/` | SLURM orchestration |
+| modules | Execution (reference indexing) |
 
 # Further Documentation
-For detailed documentation on individual components, see:
-- `preflight/README.md` — validation guarantees and execution ordering
-- `modules/README.md` — execution model and contract assumptions
-- `utils/README.md` — shared utilities and execution ABI
+For detailed documentation on individual components:
+- `arrays/README.md` — contract layer and ABI design
+- `preflight/README.md` — validation logic and guarantees
+- `pipeline/README.md` — orchestration and execution model
+- `utils/README.md` — static variables and tool parameters
+- `functions/README.md` — helper functions and validation primitives
+
+# Design Principles
+This pipeline enforces:
+- Contract-driven design
+- Fail-fast validation
+- Explicit execution boundaries
+- Minimal and explicit execution ABI
+- Deterministic execution
+- Clean separation of concerns
+- Reproducible HPC workflows
 
 # Citation
 If you use this pipeline in published work, please cite:
-
 > Baptista, R. _genome-index: A contract-driven HPC pipeline for reference genome indexing_.
 > GitHub repository: https://github.com/romanbaptista/genome-index
-
-Optionally include the commit hash or release tag used for analysis.

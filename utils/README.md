@@ -1,169 +1,171 @@
 # `utils`
-This directory contains shared utility functions used by the `genome-index` pipeline.
 
-The scripts in `utils/` provide reusable, strictly validated helper functions that support:
-- Preflight validation
-- HPC module loading validation and enforcement
-- Defensive error handling
-- Deterministic pipeline behavior under strict Bash execution
-- Canonical definition of pipeline structure and execution ABI
+# Overview
+The `utils/` directory contains all static variable definitions used throughout the `genome-index` pipeline.
 
-Utility scripts are sourced by `run_pipeline.sh`, preflight scripts, and tool‑specific validation layers where required.
+These scripts define:
+- core directory paths
+- cluster-specific tool module identifiers
+- static, pipeline-wide configuration parameters
 
-# Design Contract
-All utility scripts adhere to the following principles:
-- Pure helper logic only (no pipeline orchestration)
-- Safe operation under `set -euo pipefail`
-- Explicit, readable control flow
-- Clear and actionable error messages
-- No reliance on implicit environment state
-- No modification of global system settings
-- Portable across HPC environments
-- Canonical definition of pipeline structure via arrays
+Importantly, `utils/` is a pure definition layer — it contains no logic, validation, or execution.
 
-Utility functions are stateless and rely entirely on arguments and inherited environment variables.
+# Design Principles
+The `utils/` layer follows strict design rules:
+- Definitions only — no functions or control flow
+- No validation — all checks occur in the preflight layer
+- No side effects — sourcing only sets variables
+- Centralised variable ownership — each variable is defined exactly once
+- Deterministic behaviour — no runtime decisions or dynamic modification
 
-# Utility Script Overview
+These principles enforce strict separation between:
+- what is defined (`utils/`)
+- what is validated (`preflight/`)
+- what is executed (`pipeline/` and modules)
+
+
+# Role in the Pipeline
+The `utils/` layer acts as the source of truth for static, shared variables, particularly:
+- directory structure definitions
+- cluster-specific tool module names
+- pipeline-wide constants required during validation and execution
+
+| Aspect | Description |
+|--------|------------|
+| Purpose | Static variable definitions |
+| Contains logic? | No |
+| Performs validation? | No |
+| Consumed by | Preflight and execution layers |
+| Scope | Paths and tool module identifiers |
+
+Variables defined in `utils/` are:
+- consumed by preflight scripts for validation and environment construction
+- propagated across execution boundaries via the ABI when required
+- used by execution modules to reconstruct runtime environments
+
+This ensures all shared parameters are:
+- defined once
+- validated centrally
+- used consistently across all pipeline layers
+
+# File Overview
+The directory is organised into:
+- a shared path definition file (`utils_paths.sh`)
+- tool-specific module definition files (`utils_<tool>.sh`)
+
+Each file:
+- defines variables within its domain
+- contains no logic
+- introduces no side effects
+
+| File | Responsibility |
+|------|----------------|
+| `utils_paths.sh` | Defines core directory variables derived from `ROOT_DIR` |
+| `utils_bwa.sh` | Defines cluster module for `bwa` |
+| `utils_samtools.sh` | Defines cluster module for `samtools` |
+
+## `utils_paths.sh`
+Defines all core directory paths derived from `ROOT_DIR`.
+
+Typical variables include:
 
 ```text
-arrays.sh
-functions_base.sh
-functions_bwa.sh
-functions_samtools.sh
+ARRAY_DIR
+FUNCTIONS_DIR
+PIPELINE_DIR
+PREFLIGHT_DIR
+UTILS_DIR
 ```
 
-Each utility script serves a narrow, well-defined purpose and is designed to be reused across multiple pipeline stages.
+Unlike many pipelines, `genome-index` does not define an `OUTPUT_DIR`.
 
-## `arrays.sh`
-Defines the canonical structure and execution contract of the pipeline.
+### Design Note
+- The pipeline operates directly on a reference FASTA file
+- All outputs (index files) are written alongside the input reference
+- No additional pipeline-owned writable directories are required
 
-### Responsibilities
-Defines ordered lists of:
-- Preflight scripts (`PREFLIGHT_ARRAY`)
-- Execution modules (`SCRIPT_ARRAY`)
-- Execution ABI (`EXPORT_ARRAY`)
-- Required commands (`COMMAND_ARRAY`)
-- Required configuration variables (`VARIABLE_ARRAY`)
+As a result:
+- `DIR_ARRAY` is not used
+- no directory creation logic is required in preflight
 
-Also defines cluster-specific module identifiers:
-- `BWA_MODULE`
-- `SAMTOOLS_MODULE`
+This reflects the atomic, reference-level nature of the pipeline.
 
-### Guarantees
-- Provides a single source of truth for pipeline structure
-- Ensures consistent validation and execution ordering
-- Defines the complete set of pipeline-owned variables propagated across SLURM boundaries
-- Defines the complete set of external dependencies required for execution
-- Encodes cluster-specific tool configuration in a controlled and explicit way
+## `utils_bwa.sh`
+Defines the cluster-specific module required to provide the `bwa` executable.
 
-### Design Notes
-- `EXPORT_ARRAY` defines the execution ABI and must not be modified downstream
-- Only pipeline-owned variables appear in `EXPORT_ARRAY` (never SLURM variables)
-- `SBATCH_EXPORTS` is a derived snapshot and is not part of the canonical ABI
-- Module definitions (`BWA_MODULE`, `SAMTOOLS_MODULE`) are intentionally excluded from `EXPORT_ARRAY`
-- `COMMAND_ARRAY` defines the full validation surface for external commands
+Includes:
+- `BWA_MODULE` — module name used with module load
 
+Example:
 
-## `functions_base.sh`
-Provides core validation and helper functions used throughout the pipeline.
+```bash
+apps/bwa-0.7.10.tcl
+```
 
-### Responsibilities
-- Validates files, directories, variables, and commands
-- Enforces non-empty configuration values
-- Provides consistent error handling and messaging
-- Guards against common Bash failure modes
-- Supports deterministic and fail-safe validation behavior
+This variable is consumed by:
+- `preflight_bwa.sh` (validation)
+- `refindex.sh` (execution module)
 
-### Functions
-| Function | Purpose |
-|----------|--------|
-| `check_file` | Confirms that a regular file exists |
-| `check_file_data` | Confirms that a file exists and is non-empty |
-| `check_directory` | Confirms that a directory exists |
-| `check_variable` | Confirms that a variable is set and non-empty |
-| `check_string` | Confirms that a string is non-empty |
-| `check_command` | Confirms that a command is available in PATH |
-| `check_executable` | Confirms that a file exists and is executable |
-| `make_executable` | Adds executable permissions to a file |
-| `check_arg` | Confirms that required function arguments are provided |
-| `fail` | Prints an error message and exits immediately |
-| `write_env` | Writes a reproducible environment file |
-| `get_directory` | Resolves the directory of a path |
-| `get_parent_directory` | Resolves the parent directory of a path |
+## `utils_samtools.sh`
+Defines the cluster-specific module required to provide the `samtools` executable.
 
-These functions are used extensively by preflight scripts to enforce pipeline invariants before any SLURM job submission.
+Includes:
+- `SAMTOOLS_MODULE` — module name used with module load
 
-## `functions_bwa.sh`
-Provides `bwa`‑specific validation helpers.
+Example:
+```bash
+apps/samtools-1.9.tcl
+```
 
-### Responsibilities
-- Confirms that the `bwa` command is available
-- Verifies that `bwa` supports the `mem` subcommand
-- Provides a clean abstraction for tool validation within preflight
+This variable is consumed by:
+- `preflight_samtools.sh` (validation)
+- `refindex.sh` (execution module)
 
-### Functions
-| Function | Purpose |
-|----------|--------|
-| `check_bwa` | Verifies availability of `bwa` and confirms support for `bwa mem` |
+# Variable Ownership Model
+Each variable is defined in the layer where its meaning originates:
+- directory structure → `utils_paths.sh`
+- tool module definitions → `utils_<tool>.sh`
+- pipeline-derived variables → preflight layer
 
-### Design Notes
-- Does not install `bwa`
-- Assumes module-based provisioning via `preflight_bwa.sh`
-- Intended for use exclusively in the preflight validation layer
+This ensures:
+- no duplication
+- no accidental redefinition
+- no hidden dependencies
 
-## `functions_samtools.sh`
-Provides `samtools`‑specific validation helpers.
+Each variable has a clear, single owner within the pipeline.
 
-### Responsibilities
-- Confirms that the `samtools` command is available
-- Verifies that `samtools` supports the `faidx` command
-- Provides a clean abstraction for tool validation within preflight
+# Usage Pattern
+Utility scripts are sourced by preflight scripts (and not by execution modules):
 
-#### Functions
-| Function | Purpose |
-|----------|--------|
-| `check_samtools` | Verifies availability of `samtools` and confirms support for `samtools faidx` |
+```bash
+source "${UTILS_DIR}/utils_paths.sh"
+source "${UTILS_DIR}/utils_bwa.sh"
+source "${UTILS_DIR}/utils_samtools.sh"
+```
 
-### Design Notes
-- Does not install `samtools`
-- Assumes module-based provisioning via `preflight_samtools.sh`
-- Intended for use exclusively in the preflight validation layer
+# Key Rules
+- Variables are validated during preflight
+- Required variables are exported via the execution ABI
+- Execution modules consume only exported variables
+- Utility scripts are not sourced across SLURM boundaries
+- Do not include logic (no loops, no conditionals)
+- Do not perform validation
+- Do not modify variables after definition
+- Do not create or mutate runtime state
+- Ensure variables are clearly named and unambiguous
+- Keep all definitions deterministic and reproducible
 
-# Usage
-Utility scripts are not intended to be executed directly; they are sourced where required.
+# Summary
+The `utils/` directory defines the static configuration layer of the `genome-index` pipeline.
 
-`arrays.sh` is sourced by:
-- `run_pipeline.sh`
-- preflight scripts
+It ensures that:
+- all shared paths and tool module definitions are declared in one place
+- variables are consistently defined and traceable
+- preflight scripts can validate the environment deterministically
+- execution layers operate on a stable, pre-validated configuration
 
-`functions_base.sh` is sourced by:
-- `run_pipeline.sh`
-- all preflight scripts
+This separation is fundamental to maintaining a:
+- reproducible
+- portable
+- contract-driven HPC pipeline architecture
 
-`functions_bwa.sh` and `functions_samtools.sh` are sourced only within tool-specific preflight scripts
-
-Execution modules do not depend on utility functions and consume only:
-- the execution ABI (`EXPORT_ARRAY`)
-- SLURM-provided variables
-
-# Error Handling
-All utility functions are designed to:
-- Fail immediately on invalid input
-- Emit concise, context-aware error messages
-- Prevent execution from progressing in an unsafe state
-
-This ensures that failures occur during the validation stage rather than during compute jobs.
-
-# Notes
-- Utility functions duplicate no validation logic found elsewhere
-- All validation is centralised in the preflight layer
-- Module scripts do not perform validation
-- Arrays define the canonical pipeline structure and must remain immutable
-- Tool provisioning is handled via HPC modules, not local installation
-- Module loading is explicit, reproducible, and cluster-dependent
-- Functions make no assumptions about SLURM execution context
-
-Adding new tools requires:
-- tool-specific utility helpers
-- corresponding preflight integration
-- updates to `COMMAND_ARRAY` and module definitions

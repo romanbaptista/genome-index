@@ -14,7 +14,7 @@
 # producing a fully indexed reference dataset.
 #
 # Supported extensions include .fa, .fasta, .fna.
-# This value is consumed by refindex.sh only
+# This value is consumed by downstream execution modules (refindex.sh).
 REF_FASTA=""
 
 ######################### REFINDEX.SH ###################################
@@ -30,5 +30,6 @@ REF_FASTA=""
 # but has no effect on correctness and has minimal impact for small
 # references such as bacterial genomes.
 #
-# This value is used by refindex.sh only.
+# This value is passed to the scheduler via pipeline.sh and
+# consumed indirectly by refindex.sh via SLURM_CPUS_PER_TASK.
 BWA_CPUS=4
